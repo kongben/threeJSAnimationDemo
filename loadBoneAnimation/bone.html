@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - blender -json</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background:#777;
+				padding:0;
+				margin:0;
+				font-weight: bold;
+				overflow:hidden;
+			}
+
+
+			a {
+				color: #ffffff;
+			}
+		</style>
+	</head>
+	<body>
+
+		<div id="container"></div>
+		<script src="three.js"></script>
+        <script type="text/javascript" src="OrbitControls.js"></script>
+		<script src="Detector.js"></script>
+		<script src="stats.min.js"></script>
+
+		<script>
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+			var container, stats, mixer,mesh,clock;
+			var camera, scene, renderer, active, idleAction;
+            
+			init();
+            
+            function enableSkinning(material) { 
+                 var materials = material
+                 for (var i = 0,length = materials.length; i < length; i++) { 
+                 var mat = materials[i]; mat.skinning = true; 
+                    } 
+            }
+			function init() {
+				container = document.getElementById( 'container' );
+				
+                //创建相机
+                camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 2000 );
+				//设置相机
+                camera.position.set( 2, 1, 2);
+                
+                //创建控件
+                controls = new THREE.OrbitControls( camera );
+                controls.dampingFactor = 0.1;
+                controls.update();
+                
+                //创建时钟
+				clock = new THREE.Clock();
+				
+                //创建场景
+                scene = new THREE.Scene();
+                
+                //创建坐标辅助线
+                var axesHelper = new THREE.AxesHelper( 5 );
+                scene.add( axesHelper );
+                
+                //创建JSONLoader
+                var loader = new THREE.JSONLoader();
+				loader.load( 'test.js', function ( geometry, materials  ) { 
+                    enableSkinning(materials)
+                     mesh = new THREE.SkinnedMesh(geometry, new THREE.MeshFaceMaterial(materials)); 
+                    //创建mesh
+                    console.log(geometry, materials);
+                    //创建mesh
+//				    mesh = object.children[0];
+//                    
+//                    //舍子mesh属性
+//				    mesh.position.set( 0, 0, 0 );
+//                    console.log(mesh);
+//                    //添加到场景
+                    scene.add( mesh );  
+//                     
+//                    
+                    let helper = new THREE.SkeletonHelper( mesh );
+                    helper.material.linewidth = 3;
+                    scene.add( helper );
+//                     
+//                    //初始化clipAction
+//                    //创建动画混合器
+				    mixer = new THREE.AnimationMixer( mesh );
+                    idleAction = mixer.clipAction( 'Bf-109.armatureAction' );
+                    console.log(idleAction);
+                    idleAction.play(idleAction);
+                    animate();
+				} );
+				
+                // lights
+                
+                //环境光
+				var ambientLight = new THREE.AmbientLight( 0xffffff );
+				scene.add( ambientLight );
+                // 初始化渲染器
+				renderer = new THREE.WebGLRenderer();
+                //设置渲染器
+                renderer.setClearColor(0xffffff); //画布颜色
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+				
+                // 初始化状态台
+				stats = new Stats();
+				container.appendChild( stats.dom );
+				
+                // 事件
+				window.addEventListener( 'resize', onWindowResize, false );
+                window.addEventListener("keydown",function(e){
+                    if(e.code == "Space"){
+                       
+                    }
+                })
+			}
+			//窗口重置
+			function onWindowResize( event ) {
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+			}
+			//渲染动画
+			function animate() {
+				requestAnimationFrame( animate );
+                controls.update();
+				stats.update();
+                mixer.update(clock.getDelta())
+				renderer.render( scene, camera );
+			}
+		</script>
+	</body>
+</html>

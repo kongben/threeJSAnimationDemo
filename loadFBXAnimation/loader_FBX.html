@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - blender -json</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background:#777;
+				padding:0;
+				margin:0;
+				font-weight: bold;
+				overflow:hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px;
+				width: 100%;
+				color: #ffffff;
+				padding: 5px;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+			}
+
+			a {
+				color: #ffffff;
+			}
+		</style>
+	</head>
+	<body>
+
+		<div id="container"></div>
+		<div id="info">
+			<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> -
+			monster by <a href="http://www.3drt.com/downloads.htm" target="_blank" rel="noopener">3drt</a>
+		</div>
+
+		<script src="three.js"></script>
+        <script type="text/javascript" src="OrbitControls.js"></script>
+		<script src="Detector.js"></script>
+		<script src="./libs/stats.min.js"></script>
+        <script src="./libs/inflate.min.js"></script>
+        <script src="FBXLoader.js"></script>
+
+		<script>
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+			var container, stats, controls;
+			var camera, scene, renderer, light;
+			var clock = new THREE.Clock();
+			var mixers ;
+            var action;
+			init();
+			function init() {
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 1, 2000 );
+                camera.position.set(30,0,30);
+                camera.lookAt( 0,0,0 );
+				scene = new THREE.Scene();
+//				// grid
+//				var gridHelper = new THREE.GridHelper( 28, 28, 0x303030, 0x303030 );
+//				gridHelper.position.set( 0, 0, 0 );
+//				scene.add( gridHelper );
+                
+                var axesHelper = new THREE.AxesHelper( 5 );
+                scene.add( axesHelper );
+				// stats
+				stats = new Stats();
+				container.appendChild( stats.dom );
+				// model
+				var manager = new THREE.LoadingManager();
+				manager.onProgress = function( item, loaded, total ) {
+					console.log( item, loaded, total );
+				};
+				var onProgress = function( xhr ) {
+					if ( xhr.lengthComputable ) {
+						var percentComplete = xhr.loaded / xhr.total * 100;
+						console.log( Math.round( percentComplete, 2 ) + '% downloaded' );
+					}
+				};
+				var onError = function( xhr ) {
+					console.error( xhr );
+				};
+				var loader = new THREE.FBXLoader( manager );
+				loader.load( 'yindao.fbx', function( object ) {
+                    console.log(object);
+					object.mixer = new THREE.AnimationMixer( object );
+					mixers = object.mixer;
+                    console.log(mixers);
+					action = object.mixer.clipAction( object.animations[ 0 ] );
+					action.play();
+                    action.timeScale = 1;
+					scene.add( object );
+                    window.addEventListener("keydown",function(e){
+                if(e.code == "Space"){
+                    action.paused = true?action.paused = false:action.paused = true
+                    action.paused = true;
+                }
+            })
+				}, onProgress, onError );
+				renderer = new THREE.WebGLRenderer();
+                 renderer.setClearColor(0xffffff); //画布颜色
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+				// controls, camera
+				controls = new THREE.OrbitControls( camera, renderer.domElement );
+				
+				camera.position.set(-0.33, 0.025,10.51 );
+                console.log(camera)
+				controls.update();
+				window.addEventListener( 'resize', onWindowResize, false );
+				light = new THREE.HemisphereLight(0xffffff, 0xffffff, 1.0);
+				light.position.set(0, -10, 30);
+				scene.add(light);
+                var light = new THREE.AmbientLight( 0x404040 ); // soft white light
+                scene.add( light );
+				light = new THREE.DirectionalLight(0xffffff, 1.0);
+				light.position.set(30,0,30);
+				scene.add(light);
+				animate();
+			}
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+			}
+			//
+			function animate() {
+				requestAnimationFrame( animate );
+				stats.update();
+				render();
+			}
+			function render() {
+                mixers.update( clock.getDelta() );
+				renderer.render( scene, camera );
+			}
+            
+		</script>
+	</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - blender -json</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background:#777;
+				padding:0;
+				margin:0;
+				font-weight: bold;
+				overflow:hidden;
+			}
+
+
+			a {
+				color: #ffffff;
+			}
+		</style>
+	</head>
+	<body>
+
+		<div id="container"></div>
+		<script src="three.js"></script>
+        <script type="text/javascript" src="OrbitControls.js"></script>
+		<script src="Detector.js"></script>
+		<script src="stats.min.js"></script>
+
+		<script>
+			if ( ! Detector.webgl ) Detector.addGetWebGLMessage();
+			var container, stats, clock, mixer;
+			var camera, scene, renderer, active;
+            var mouse ={},objects=[];
+			init();
+			function init() {
+				container = document.getElementById( 'container' );
+				
+                //创建相机
+                camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 2000 );
+				//设置相机
+                camera.position.set( 0, 0, 8 );
+                camera.rotateY(30)
+                
+                //创建控件
+                controls = new THREE.OrbitControls( camera );
+                controls.dampingFactor = 0.1;
+                controls.update();
+                
+                //创建时钟
+				clock = new THREE.Clock();
+				
+                //创建场景
+                scene = new THREE.Scene();
+                
+                //创建坐标辅助线
+                var axesHelper = new THREE.AxesHelper( 5 );
+                scene.add( axesHelper );
+                
+                //创建动画混合器
+				mixer = new THREE.AnimationMixer( scene );
+               
+                //创建JSONLoader
+                var loader = new THREE.JSONLoader();
+				loader.load( 'yindao.js', function ( geometry, materials ) {
+                    
+                    //允许变形动画
+					for(let i = 0;i<materials.length;i++){
+                        materials[i].morphTargets = true;
+                    }
+                    
+                    //创建mesh
+				    let mesh = new THREE.Mesh( geometry, materials );
+                    //舍子mesh属性
+                    mesh.rotateX(29.8);
+				    mesh.position.set( 0, 0, 0 );
+                    //添加到场景
+                    scene.add( mesh );
+				    
+                    objects.push(mesh);
+                    
+                    //初始化clipAction
+                    active = mixer.clipAction( geometry.animations[ 0 ], mesh )
+				    
+                    //设置播放时间 5s
+                    active.setDuration( 5 )			// one second     
+                    animate();
+				} );
+				
+                // lights
+                
+                //环境光
+				var ambientLight = new THREE.AmbientLight( 0xffffff );
+				scene.add( ambientLight );
+				
+                //点光源
+                var pointLight = new THREE.PointLight( 0xffffff, 5, 10 );
+				pointLight.position.set( 5, 0, 10 );
+				scene.add( pointLight );
+                
+//                //点光源
+//                var pointLight1 = new THREE.PointLight( 0xffffff, 5, 30 );
+//				pointLight1.position.set( 5, 0, -10 );
+//				scene.add( pointLight1 );
+				
+                // 初始化渲染器
+				renderer = new THREE.WebGLRenderer();
+                //设置渲染器
+                renderer.setClearColor(0x000000); //画布颜色
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+				
+                // 初始化状态台
+				stats = new Stats();
+				container.appendChild( stats.dom );
+				
+                // 事件
+				window.addEventListener( 'resize', onWindowResize, false );
+                window.addEventListener("keydown",function(e){
+                    if(e.code == "Space"){
+                        active.clampWhenFinished = true;
+                        active.play()
+                    }
+                })
+                window.addEventListener("mousemove",function(e){
+                mouse.x = ( e.clientX / window.innerWidth ) * 2 - 1; //鼠标的x到屏幕y轴的距离与屏幕宽的一半的比值 绝对值不超过1
+                mouse.y = - ( e.clientY / window.innerHeight ) * 2 + 1; //鼠标的y到屏幕x轴的距离与屏幕宽的一半的比值 绝对值不超过1
+
+                //新建一个三维变换半单位向量 假设z方向就是0.5,这样左右移的时候，还会有前后移的效果
+                //屏幕和场景转换工具根据照相机，把这个向量从屏幕转化为场景中的向量
+                var vector = new THREE.Vector3( mouse.x, mouse.y, 0.5 ).unproject( camera ); 
+        
+                //变换过后的向量vector减去相机的位置向量后标准化
+                var raycaster = new THREE.Raycaster( camera.position, vector.sub( camera.position ).normalize() );
+        
+                //新建一条从相机的位置到vector向量的一道光线
+                var intersects = raycaster.intersectObjects( objects );
+        
+                if ( intersects.length > 0 && scene.children.length< 4) {
+      
+                //把选中的对象放到全局变量SELECTED中
+                    console.log(intersects[ 0 ].object);
+                    
+                    var linematerial = new THREE.LineBasicMaterial( { color: 0xffffff, linewidth: 2, transparent: true } );
+				    line = new THREE.Line( objects[0].geometry, linematerial );
+                    line.rotateX(29.8);
+				    scene.add( line );
+                }
+                    else{
+                        console.log(scene.children);
+                        scene.remove(line);
+                    }
+                })
+			}
+			//窗口重置
+			function onWindowResize( event ) {
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+			}
+			// 动画
+			function animate() {
+				requestAnimationFrame( animate );
+				render();
+                controls.update();
+				stats.update();
+                
+                
+			}
+            //渲染
+			function render() {
+				mixer.update( clock.getDelta() );
+                //暂停
+                if(active.time >5.8){
+                    active.paused = true
+                }
+				camera.lookAt( scene.position );
+				renderer.render( scene, camera );
+			}
+		</script>
+	</body>
+</html>
